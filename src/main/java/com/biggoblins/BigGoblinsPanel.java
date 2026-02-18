@@ -70,9 +70,6 @@ public class BigGoblinsPanel extends PluginPanel
 	// Fonts reused in dynamic updates (avoid recreating every tick)
 	private static final Font EFFECT_TIMER_FONT = new Font(Font.MONOSPACED, Font.BOLD, 9);
 	private static final Font EMPTY_ITALIC_FONT = new Font(Font.SANS_SERIF, Font.ITALIC, 10);
-	private static final Font THRALL_LABEL_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 11);
-	private static final Font THRALL_TIMER_FONT = new Font(Font.MONOSPACED, Font.BOLD, 11);
-	private static final Color THRALL_PURPLE = new Color(180, 140, 255);
 	private static final Color DIM_GRAY = new Color(100, 100, 100);
 
 	private final JLabel memberCountLabel;
@@ -93,10 +90,6 @@ public class BigGoblinsPanel extends PluginPanel
 	private final ItemManager itemManager;
 	private final Timer animationTimer;
 	private final java.util.HashMap<Integer, BufferedImage> scaledImageCache = new java.util.HashMap<>();
-
-	// Thrall section
-	private final JPanel thrallSection;
-	private final JPanel thrallContainer;
 
 	// Game message section
 	private final GameMessagePanel gameMessagePanel;
@@ -169,6 +162,32 @@ public class BigGoblinsPanel extends PluginPanel
 		membersBox.add(memberCountLabel);
 
 		mainPanel.add(wrapFull(membersBox));
+		mainPanel.add(createSpacer(6));
+
+		// ==========================================
+		// GAME MESSAGE SECTION
+		// ==========================================
+		gameMessagePanel = new GameMessagePanel();
+		gameMessagePanel.setLayout(new BoxLayout(gameMessagePanel, BoxLayout.Y_AXIS));
+		gameMessagePanel.setBorder(new EmptyBorder(8, 10, 8, 10));
+
+		JLabel msgHeader = new JLabel("GAME MESSAGE", SwingConstants.CENTER);
+		msgHeader.setForeground(TITLE_GREEN);
+		msgHeader.setFont(sectionFont);
+		msgHeader.setAlignmentX(0.5f);
+		msgHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 16));
+		gameMessagePanel.add(msgHeader);
+		gameMessagePanel.add(createSpacer(6));
+
+		messageLabel = new JLabel("<html><center>No messages</center></html>");
+		messageLabel.setForeground(new Color(120, 120, 120));
+		messageLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+		messageLabel.setAlignmentX(0.5f);
+		messageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		messageLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+		gameMessagePanel.add(messageLabel);
+
+		mainPanel.add(wrapFull(gameMessagePanel));
 		mainPanel.add(createSpacer(6));
 
 		// ==========================================
@@ -260,33 +279,6 @@ public class BigGoblinsPanel extends PluginPanel
 		mainPanel.add(createSpacer(6));
 
 		// ==========================================
-		// THRALLS SECTION
-		// ==========================================
-		thrallSection = createContentBox();
-		thrallSection.setLayout(new BoxLayout(thrallSection, BoxLayout.Y_AXIS));
-
-		JLabel thrallHeader = new JLabel("THRALLS", SwingConstants.CENTER);
-		thrallHeader.setForeground(TITLE_GREEN);
-		thrallHeader.setFont(sectionFont);
-		thrallHeader.setAlignmentX(0.5f);
-		thrallHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 16));
-		thrallSection.add(thrallHeader);
-		thrallSection.add(createSpacer(4));
-
-		thrallContainer = new JPanel(new BorderLayout());
-		thrallContainer.setBackground(CONTENT_BG);
-
-		JLabel noThrallLabel = new JLabel("No thrall active");
-		noThrallLabel.setForeground(new Color(100, 100, 100));
-		noThrallLabel.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 10));
-		noThrallLabel.setHorizontalAlignment(SwingConstants.CENTER);
-		thrallContainer.add(noThrallLabel, BorderLayout.CENTER);
-
-		thrallSection.add(thrallContainer);
-		mainPanel.add(wrapFull(thrallSection));
-		mainPanel.add(createSpacer(6));
-
-		// ==========================================
 		// OPPONENT SECTION
 		// ==========================================
 		opponentSection = createContentBox();
@@ -317,32 +309,6 @@ public class BigGoblinsPanel extends PluginPanel
 		opponentSection.add(oppBarWrapper);
 
 		mainPanel.add(wrapFull(opponentSection));
-		mainPanel.add(createSpacer(6));
-
-		// ==========================================
-		// GAME MESSAGE SECTION
-		// ==========================================
-		gameMessagePanel = new GameMessagePanel();
-		gameMessagePanel.setLayout(new BoxLayout(gameMessagePanel, BoxLayout.Y_AXIS));
-		gameMessagePanel.setBorder(new EmptyBorder(8, 10, 8, 10));
-
-		JLabel msgHeader = new JLabel("GAME MESSAGE", SwingConstants.CENTER);
-		msgHeader.setForeground(TITLE_GREEN);
-		msgHeader.setFont(sectionFont);
-		msgHeader.setAlignmentX(0.5f);
-		msgHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 16));
-		gameMessagePanel.add(msgHeader);
-		gameMessagePanel.add(createSpacer(6));
-
-		messageLabel = new JLabel("<html><center>No messages</center></html>");
-		messageLabel.setForeground(new Color(120, 120, 120));
-		messageLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
-		messageLabel.setAlignmentX(0.5f);
-		messageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-		messageLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
-		gameMessagePanel.add(messageLabel);
-
-		mainPanel.add(wrapFull(gameMessagePanel));
 
 		add(mainPanel, BorderLayout.NORTH);
 
@@ -350,7 +316,6 @@ public class BigGoblinsPanel extends PluginPanel
 		animationTimer = new Timer(80, e ->
 		{
 			effectsContainer.repaint();
-			thrallContainer.repaint();
 			gameMessagePanel.repaint();
 		});
 		animationTimer.start();
@@ -476,62 +441,6 @@ public class BigGoblinsPanel extends PluginPanel
 
 		effectsContainer.revalidate();
 		effectsContainer.repaint();
-	}
-
-	/**
-	 * Updates the thrall display. Pass null type when no thrall is active.
-	 */
-	public void updateThrall(String type, int ticksRemaining)
-	{
-		thrallContainer.removeAll();
-
-		if (type == null || ticksRemaining <= 0)
-		{
-			JLabel noThrall = new JLabel("No thrall active");
-			noThrall.setForeground(DIM_GRAY);
-			noThrall.setFont(EMPTY_ITALIC_FONT);
-			noThrall.setHorizontalAlignment(SwingConstants.CENTER);
-			thrallContainer.add(noThrall, BorderLayout.CENTER);
-		}
-		else
-		{
-			int totalSeconds = (int) (ticksRemaining * 0.6);
-			int minutes = totalSeconds / 60;
-			int seconds = totalSeconds % 60;
-			String timeStr = String.format("%d:%02d", minutes, seconds);
-
-			boolean warning = ticksRemaining <= WARNING_TICKS;
-
-			EffectTile tile = new EffectTile(warning);
-			tile.setLayout(new BorderLayout(6, 0));
-			tile.setBorder(new EmptyBorder(4, 8, 4, 8));
-			tile.setToolTipText(type + " Thrall — " + timeStr + " remaining");
-
-			// Cached icon — Book of the Dead (Arceuus spellbook)
-			BufferedImage scaled = getScaledItemImage(25818);
-			if (scaled != null)
-			{
-				JLabel iconLabel = new JLabel(new ImageIcon(scaled));
-				tile.add(iconLabel, BorderLayout.WEST);
-			}
-
-			// Type name
-			JLabel typeLabel = new JLabel(type + " Thrall");
-			typeLabel.setForeground(warning ? Color.WHITE : THRALL_PURPLE);
-			typeLabel.setFont(THRALL_LABEL_FONT);
-			tile.add(typeLabel, BorderLayout.CENTER);
-
-			// Timer
-			JLabel timerLabel = new JLabel(timeStr);
-			timerLabel.setForeground(warning ? Color.WHITE : TIMER_COLOR);
-			timerLabel.setFont(THRALL_TIMER_FONT);
-			tile.add(timerLabel, BorderLayout.EAST);
-
-			thrallContainer.add(tile, BorderLayout.CENTER);
-		}
-
-		thrallContainer.revalidate();
-		thrallContainer.repaint();
 	}
 
 	/**

@@ -100,11 +100,6 @@ public class BigGoblinsPlugin extends Plugin
 	private static final int CRYSTAL_SCARAB_TICKS = 40;
 	private static final int LIQUID_ADRENALINE_TICKS = 250;
 
-	// =====================================================================
-	// Thrall tracking
-	// =====================================================================
-	private static final int VARBIT_ARCEUUS_RESURRECTION = 12330;
-
 	@Inject
 	private Client client;
 
@@ -114,8 +109,11 @@ public class BigGoblinsPlugin extends Plugin
 	@Inject
 	private ItemManager itemManager;
 
+	private static final String CLAN_NAME = "Big Goblins";
+
 	private NavigationButton navButton;
 	private BigGoblinsPanel panel;
+	private boolean navButtonAdded = false;
 
 	// Chat-message-based effect timers
 	private final Map<String, int[]> chatBasedEffects = new LinkedHashMap<>();
@@ -131,10 +129,6 @@ public class BigGoblinsPlugin extends Plugin
 	private int lastOpponentRatio;
 	private int lastOpponentScale;
 
-	// Thrall tracking
-	private String thrallType = null;
-	private int thrallTicksRemaining = 0;
-
 	@Override
 	protected void startUp() throws Exception
 	{
@@ -149,19 +143,21 @@ public class BigGoblinsPlugin extends Plugin
 			.panel(panel)
 			.build();
 
-		clientToolbar.addNavigation(navButton);
+		updateNavVisibility();
 		log.info("Big Goblins plugin started");
 	}
 
 	@Override
 	protected void shutDown() throws Exception
 	{
-		clientToolbar.removeNavigation(navButton);
+		if (navButtonAdded)
+		{
+			clientToolbar.removeNavigation(navButton);
+			navButtonAdded = false;
+		}
 		chatBasedEffects.clear();
 		smoothEffects.clear();
 		lastVarbitRaw.clear();
-		thrallType = null;
-		thrallTicksRemaining = 0;
 		clearOpponent();
 		panel.dispose();
 		log.info("Big Goblins plugin stopped");
@@ -174,7 +170,6 @@ public class BigGoblinsPlugin extends Plugin
 		updateCombatStats();
 		updateOpponent();
 		updateEffectTimers();
-		updateThrall();
 	}
 
 	@Subscribe
@@ -183,14 +178,13 @@ public class BigGoblinsPlugin extends Plugin
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
 			updateMemberCount();
+			updateNavVisibility();
 		}
 		else if (event.getGameState() == GameState.LOGIN_SCREEN)
 		{
 			chatBasedEffects.clear();
 			smoothEffects.clear();
 			lastVarbitRaw.clear();
-			thrallType = null;
-			thrallTicksRemaining = 0;
 			clearOpponent();
 			SwingUtilities.invokeLater(() ->
 			{
@@ -201,9 +195,9 @@ public class BigGoblinsPlugin extends Plugin
 				panel.updateCombatStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 				panel.updateOpponent(null, 0, 1);
 				panel.updateEffects(new LinkedHashMap<>());
-				panel.updateThrall(null, 0);
 				panel.updateGameMessage(null);
 			});
+			updateNavVisibility();
 		}
 	}
 
@@ -239,28 +233,6 @@ public class BigGoblinsPlugin extends Plugin
 				chatBasedEffects.put("Liquid Adrenaline", new int[]{ITEM_LIQUID_ADRENALINE, LIQUID_ADRENALINE_TICKS});
 			}
 
-			// Thrall detection
-			if (msg.contains("resurrect a") && msg.contains("thrall"))
-			{
-				String lower = msg.toLowerCase();
-				if (lower.contains("ghost"))
-				{
-					thrallType = "Ghost";
-				}
-				else if (lower.contains("skeleton"))
-				{
-					thrallType = "Skeleton";
-				}
-				else if (lower.contains("zombie"))
-				{
-					thrallType = "Zombie";
-				}
-				else
-				{
-					thrallType = "Thrall";
-				}
-				thrallTicksRemaining = client.getBoostedSkillLevel(Skill.MAGIC);
-			}
 		}
 
 		// Game message feed (GAMEMESSAGE only)
@@ -302,18 +274,42 @@ public class BigGoblinsPlugin extends Plugin
 	public void onClanChannelChanged(ClanChannelChanged event)
 	{
 		updateMemberCount();
+		updateNavVisibility();
 	}
 
 	@Subscribe
 	public void onClanMemberJoined(ClanMemberJoined event)
 	{
 		updateMemberCount();
+		updateNavVisibility();
 	}
 
 	@Subscribe
 	public void onClanMemberLeft(ClanMemberLeft event)
 	{
 		updateMemberCount();
+		updateNavVisibility();
+	}
+
+	private void updateNavVisibility()
+	{
+		ClanSettings clanSettings = client.getClanSettings();
+		boolean inBigGoblins = clanSettings != null
+			&& CLAN_NAME.equals(clanSettings.getName());
+
+		SwingUtilities.invokeLater(() ->
+		{
+			if (inBigGoblins && !navButtonAdded)
+			{
+				clientToolbar.addNavigation(navButton);
+				navButtonAdded = true;
+			}
+			else if (!inBigGoblins && navButtonAdded)
+			{
+				clientToolbar.removeNavigation(navButton);
+				navButtonAdded = false;
+			}
+		});
 	}
 
 	private void updateMemberCount()
@@ -586,32 +582,4 @@ public class BigGoblinsPlugin extends Plugin
 		lastVarbitRaw.remove(name);
 	}
 
-	// =====================================================================
-	// Thrall tracking
-	// =====================================================================
-
-	private void updateThrall()
-	{
-		if (thrallType != null)
-		{
-			if (client.getVarbitValue(VARBIT_ARCEUUS_RESURRECTION) == 0)
-			{
-				thrallType = null;
-				thrallTicksRemaining = 0;
-			}
-			else
-			{
-				thrallTicksRemaining = Math.max(0, thrallTicksRemaining - 1);
-				if (thrallTicksRemaining <= 0)
-				{
-					thrallType = null;
-					thrallTicksRemaining = 0;
-				}
-			}
-		}
-
-		final String type = thrallType;
-		final int ticks = thrallTicksRemaining;
-		SwingUtilities.invokeLater(() -> panel.updateThrall(type, ticks));
-	}
 }

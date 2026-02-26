@@ -15,6 +15,10 @@ repositories {
 
 def runeLiteVersion = 'latest.release'
 
+configurations {
+	preview
+}
+
 dependencies {
 	compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
 
@@ -24,6 +28,20 @@ dependencies {
 	testImplementation 'junit:junit:4.12'
 	testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
 	testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
+
+	// Preview runtime deps (RuneLite client + its transitive deps)
+	preview group: 'net.runelite', name: 'client', version: runeLiteVersion
+}
+
+// Task: run the panel preview standalone
+task runPreview(type: JavaExec, dependsOn: compileJava) {
+	group = 'preview'
+	description = 'Launch the BigGoblinsPanel preview window'
+	classpath = files(
+		sourceSets.main.output,
+		configurations.preview
+	)
+	mainClass = 'com.biggoblins.PanelPreview'
 }
 
 group = 'com.biggoblins'

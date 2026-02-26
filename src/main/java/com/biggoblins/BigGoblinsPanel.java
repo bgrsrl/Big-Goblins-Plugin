@@ -15,6 +15,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
+import java.util.function.IntFunction;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -87,7 +88,7 @@ public class BigGoblinsPanel extends PluginPanel
 	private final JPanel effectsContainer;
 	private final JPanel effectsSection;
 	private final Font retroFont;
-	private final ItemManager itemManager;
+	private final IntFunction<BufferedImage> imageProvider;
 	private final Timer animationTimer;
 	private final java.util.HashMap<Integer, BufferedImage> scaledImageCache = new java.util.HashMap<>();
 
@@ -95,10 +96,21 @@ public class BigGoblinsPanel extends PluginPanel
 	private final GameMessagePanel gameMessagePanel;
 	private final JLabel messageLabel;
 
+	/** Used by RuneLite plugin at runtime. */
 	public BigGoblinsPanel(ItemManager itemManager)
 	{
+		this(itemId ->
+		{
+			BufferedImage raw = itemManager.getImage(itemId);
+			return raw;
+		});
+	}
+
+	/** Used by PanelPreview for standalone preview without RuneLite. */
+	public BigGoblinsPanel(IntFunction<BufferedImage> imageProvider)
+	{
 		super(false);
-		this.itemManager = itemManager;
+		this.imageProvider = imageProvider;
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 		setLayout(new BorderLayout());
 		setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -472,7 +484,7 @@ public class BigGoblinsPanel extends PluginPanel
 			return cached;
 		}
 
-		BufferedImage raw = itemManager.getImage(itemId);
+		BufferedImage raw = imageProvider.apply(itemId);
 		if (raw == null)
 		{
 			return null;
